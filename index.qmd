@@ -1,0 +1,79 @@
+---
+title: "Massachusetts Income"
+format: html
+execute:
+  echo: false
+  warning: false
+---
+
+
+**Median Income**
+```{r}
+library(tidycensus)
+library(tidyverse)
+
+mass_income <- get_acs(
+  geography = "county",
+  variables = "B19013_001",
+  state = "MA",
+  year = 2022,
+  survey = "acs5",
+  output = "wide",
+  load = TRUE
+) |>
+  rename(
+    county = NAME,
+    income = B19013_001E,
+    moe = B19013_001M
+  )
+
+# Now this will work
+mass_income |>
+  ggplot(aes(x = reorder(county, income), y = income)) +
+  geom_col(fill = "steelblue") +
+  coord_flip()
+
+
+```
+
+**Median Income by Confidence Interval**
+```{r}
+library(tidyverse)   # loads ggplot2, dplyr, etc.
+library(tidycensus)
+mass_income |>
+  ggplot(aes(x = income, y = fct_reorder(county, income))) +
+  geom_point(color = "#1B9E77", size = 3) +
+  geom_errorbarh(aes(xmin = income - moe, xmax = income + moe), height = 0.3, color = "gray50") +
+  labs(
+    title = "Median Income with Confidence Intervals (MOE)",
+    x = "Median Income (USD)",
+    y = "County"
+  ) +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  theme_light(base_size = 14)
+
+```
+
+**Countries Fluctuated Income**
+```{r}
+library(tidyverse)   # loads ggplot2, dplyr, etc.
+library(tidycensus)
+# Compute overall state median
+state_median <- median(mass_income$income)
+
+mass_income |>
+  mutate(status = if_else(income >= state_median, "Above Median", "Below Median")) |>
+  ggplot(aes(x = reorder(county, income), y = income, fill = status)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Counties Above vs Below Statewide Median Income",
+    x = "",
+    y = "Median Income (USD)"
+  ) +
+  scale_fill_manual(values = c("Above Median" = "#4CAF50", "Below Median" = "#F44336")) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top")
+
+```
